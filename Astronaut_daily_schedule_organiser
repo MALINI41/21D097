@@ -1,0 +1,197 @@
+import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
+// Task class to store the task information
+class Task {
+    private String description;
+    private LocalTime startTime;
+    private LocalTime endTime;
+    private String priority;
+
+    public Task(String description, LocalTime startTime, LocalTime endTime, String priority) {
+        this.description = description;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.priority = priority;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public LocalTime getStartTime() {
+        return startTime;
+    }
+
+    public LocalTime getEndTime() {
+        return endTime;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    @Override
+    public String toString() {
+        return startTime + " - " + endTime + ": " + description + " [" + priority + "]";
+    }
+}
+
+// MenuOption class to store the menu option information
+class MenuOption {
+    private String description;
+    private Consumer<Scanner> action;
+
+    public MenuOption(String description, Consumer<Scanner> action) {
+        this.description = description;
+        this.action = action;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Consumer<Scanner> getAction() {
+        return action;
+    }
+}
+
+// Main application class
+public class AstronautDailyScheduleOrganizer {
+    private List<Task> tasks;
+
+    public AstronautDailyScheduleOrganizer() {
+        tasks = new ArrayList<>();
+    }
+
+    public void addTask(String description, String startTimeStr, String endTimeStr, String priority) {
+        LocalTime startTime;
+        LocalTime endTime;
+        try {
+            startTime = LocalTime.parse(startTimeStr, DateTimeFormatter.ofPattern("HH:mm"));
+            endTime = LocalTime.parse(endTimeStr, DateTimeFormatter.ofPattern("HH:mm"));
+        } catch (DateTimeParseException e) {
+            System.out.println("Error: Invalid time format. Please use HH:MM.");
+            return;
+        }
+
+        if (startTime.isAfter(endTime)) {
+            System.out.println("Error: Start time must be before end time.");
+            return;
+        }
+
+        if (!isValidPriority(priority)) {
+            System.out.println("Error: Invalid priority. Please enter High, Medium, or Low.");
+            return;
+        }
+
+        for (Task task : tasks) {
+            if (isTimeConflict(task, startTime, endTime)) {
+                System.out.println("Error: Task conflicts with existing task \"" + task.getDescription() + "\".");
+                return;
+            }
+        }
+        tasks.add(new Task(description, startTime, endTime, priority));
+        System.out.println("Task added successfully. No conflicts.");
+    }
+
+    public void removeTask(String description) {
+        for (Task task : tasks) {
+            if (task.getDescription().equals(description)) {
+                tasks.remove(task);
+                System.out.println("Task removed successfully.");
+                return;
+            }
+        }
+        System.out.println("Error: Task not found.");
+    }
+
+    public void viewTasks() {
+        if (tasks.isEmpty()) {
+            System.out.println("No tasks scheduled for the day.");
+            return;
+        }
+        tasks.sort((t1, t2) -> t1.getStartTime().compareTo(t2.getStartTime()));
+        for (Task task : tasks) {
+            System.out.println(task);
+        }
+    }
+
+    private boolean isTimeConflict(Task task, LocalTime newStartTime, LocalTime newEndTime) {
+        return (newStartTime.isBefore(task.getEndTime()) && newEndTime.isAfter(task.getStartTime()));
+    }
+
+    private boolean isValidPriority(String priority) {
+        return priority.equalsIgnoreCase("High") || 
+               priority.equalsIgnoreCase("Medium") || 
+               priority.equalsIgnoreCase("Low");
+    }
+
+    public static void main(String[] args) {
+        AstronautDailyScheduleOrganizer organizer = new AstronautDailyScheduleOrganizer();
+        Scanner scanner = new Scanner(System.in);
+
+        MenuOption[] options = {
+            new MenuOption("Add Task", sc -> {
+                System.out.print("Enter task description: ");
+                String description = sc.nextLine();
+                System.out.print("Enter task start time (HH:MM): ");
+                String startTime = sc.nextLine();
+                System.out.print("Enter task end time (HH:MM): ");
+                String endTime = sc.nextLine();
+                System.out.print("Enter task priority (High, Medium, Low): ");
+                String priority = sc.nextLine();
+                organizer.addTask(description, startTime, endTime, priority);
+            }),
+            new MenuOption("Remove Task", sc -> {
+                System.out.print("Enter task description to remove: ");
+                String description = sc.nextLine();
+                organizer.removeTask(description);
+            }),
+            new MenuOption("View Tasks", sc -> organizer.viewTasks()),
+            new MenuOption("Exit", sc -> System.out.println("Exiting..."))
+        };
+
+        executeMenu(scanner, options, 3);
+    }
+
+    private static void executeMenu(Scanner scanner, MenuOption[] options, int exitOptionIndex) {
+        printMenu(options);
+        int choice = getUserChoice(scanner, options.length);
+        if (choice == exitOptionIndex) {
+            options[choice].getAction().accept(scanner);
+        } else {
+            options[choice].getAction().accept(scanner);
+            executeMenu(scanner, options, exitOptionIndex);
+        }
+    }
+
+    private static void printMenu(MenuOption[] options) {
+        System.out.println("Please choose an option:");
+        for (int i = 0; i < options.length; i++) {
+            System.out.println((i + 1) + ". " + options[i].getDescription());
+        }
+        System.out.print("Your choice: ");
+    }
+
+    private static int getUserChoice(Scanner scanner, int numberOfOptions) {
+        String input = scanner.nextLine();
+        try {
+            int choice = Integer.parseInt(input) - 1;
+            if (choice >= 0 && choice < numberOfOptions) {
+                return choice;
+            } else {
+                System.out.print("Invalid choice. Please enter a number between 1 and " + numberOfOptions + ": ");
+                return getUserChoice(scanner, numberOfOptions);
+            }
+        } catch (NumberFormatException e) {
+            System.out.print("Invalid input. Please enter a number: ");
+            return getUserChoice(scanner, numberOfOptions);
+        }
+    }
+}
